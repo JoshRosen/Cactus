@@ -5,6 +5,8 @@ import SimpleHTTPServer
 import SocketServer
 
 import mime
+import posixpath
+import urllib
 
 # See: https://github.com/koenbok/Cactus/issues/8
 # class Server(SocketServer.ForkingMixIn, SocketServer.TCPServer):
@@ -15,6 +17,32 @@ class Server(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
 class RequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 	
+    @property
+    def base_dir(self):
+        return "."
+
+    def translate_path(self, path):
+        """Translate a /-separated PATH to the local filename syntax.
+
+        Components that mean special things to the local file system
+        (e.g. drive or directory names) are ignored.  (XXX They should
+        probably be diagnosed.)
+
+        """
+        # abandon query parameters
+        path = path.split('?',1)[0]
+        path = path.split('#',1)[0]
+        path = posixpath.normpath(urllib.unquote(path))
+        words = path.split('/')
+        words = filter(None, words)
+        path = self.base_dir
+        for word in words:
+            drive, word = os.path.splitdrive(word)
+            head, word = os.path.split(word)
+            if word in (os.curdir, os.pardir): continue
+            path = os.path.join(path, word)
+        return path
+
 	def send_head(self):
 		"""Common code for GET and HEAD commands.
 
@@ -100,3 +128,11 @@ class RequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 	def guess_type(self, path):
 		return mime.guess(path)
+
+def get_request_handler(base_directory):
+    class CustomRequestHandler(RequestHandler):
+
+        @property
+        def base_dir(self):
+            return base_directory
+    return CustomRequestHandler

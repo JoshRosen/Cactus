@@ -19,7 +19,7 @@ from .utils import *
 from .page import Page
 from .listener import Listener
 from .file import File
-from .server import Server, RequestHandler
+from .server import Server, get_request_handler
 from .browser import browserReload, browserReloadCSS
 
 
@@ -162,8 +162,6 @@ class Site(object):
 	
 		logging.info('Running webserver at 0.0.0.0:%s for %s' % (port, self.paths['build']))
 		logging.info('Type control-c to exit')
-	
-		os.chdir(self.paths['build'])
 		
 		def rebuild(changes):
 			logging.info('*** Rebuilding (%s changed)' % self.path)
@@ -192,7 +190,7 @@ class Site(object):
 		self.listener.run()
 		
 		try:
-			httpd = Server(("", port), RequestHandler)
+			httpd = Server(("", port), get_request_handler(self.paths['build']))
 		except socket.error, e:
 			logging.info('Could not start webserver, port is in use. To use another port:')
 			logging.info('  cactus serve %s' % (int(port) + 1))
